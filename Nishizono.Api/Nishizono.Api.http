@@ -1,0 +1,14 @@
+@Nishizono.Api_HostAddress = https://localhost:7107
+
+GET {{Nishizono.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+POST {{Nishizono.Api_HostAddress}}/graphql/
+Content-Type: application/json
+
+{
+  "query": "{ immersionLogs { } }",
+  "variables": null
+}
