@@ -53,4 +53,9 @@ public partial class NishizonoDbContext
     {
         return ImmersionLogs.Where(_ => _.UserId == userId);
     }
+
+    public async Task<IQueryable<ImmersionLog>> GetImmersionLogs(ulong userId, DateTime since)
+    {
+        return ImmersionLogs.Where(_ => _.UserId == userId).Where(_ => _.TimeStamp > since);
+    }
 }

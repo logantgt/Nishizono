@@ -23,6 +23,12 @@ using System.Globalization;
 using System.Text;
 using Nishizono.Providers;
 using Rollcall.Extensions.Microsoft.DependencyInjection;
+using FuzzySharp.Edits;
+using Remora.Discord.API.Gateway.Commands;
+using Remora.Discord.Extensions.Embeds;
+using Nishizono.Bot.Gateway.Quiz;
+using Nishizono.Bot.Remora;
+using Remora.Discord.API.Abstractions.Rest;
 
 /// <summary>
 /// Responds to Media Logging commands.
@@ -34,14 +40,16 @@ public class MediaLogCommands : CommandGroup
     private readonly IInteractionCommandContext _context;
     private readonly NishizonoDbContext _database;
     private readonly IRollcallProvider<IMetadataProvider> _provider;
+    private readonly IDiscordRestChannelAPI _channelApi;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MediaLogCommands"/> class.
     /// </summary>
     /// <param name="feedbackService">The feedback service.</param>
-    public MediaLogCommands(FeedbackService feedbackService, IInteractionCommandContext interactionContext, NishizonoDbContext database, IRollcallProvider<IMetadataProvider> provider)
+    public MediaLogCommands(FeedbackService feedbackService, IInteractionCommandContext interactionContext, NishizonoDbContext database, IRollcallProvider<IMetadataProvider> provider, IDiscordRestChannelAPI channelApi)
     {
         _feedbackService = feedbackService;
+        _channelApi = channelApi;
         _context = interactionContext;
         _database = database;
         _provider = provider;
@@ -123,7 +131,7 @@ public class MediaLogCommands : CommandGroup
     public async Task<IResult> UndoImmersionLogAsync()
     {
         IQueryable<ImmersionLog> output = (await _database.GetImmersionLogs(_context.Interaction.Member.Value.User.Value.ID.Value)).OrderBy(_ => _.Id);
-        if(output.Count() == 0) return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** You have no immersion logs to remove.", ct: CancellationToken);
+        if(output.Count() == 0) return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** You have no immersion logs to remove.", ct: CancellationToken, options: new(MessageFlags: MessageFlags.Ephemeral));
         var lastOutput = output.Last();
         await _database.RemoveImmersionLog(lastOutput);
 
@@ -147,7 +155,7 @@ public class MediaLogCommands : CommandGroup
 
         List<ImmersionLog> results = output.ToList();
 
-        if(results.Count() == 0) return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** You have no immersion logs to show.", ct: CancellationToken);
+        if(results.Count() == 0) return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** You have no immersion logs to show.", ct: CancellationToken, options: new(MessageFlags: MessageFlags.Ephemeral));
         results.Reverse();
 
         StringBuilder logs = new();
@@ -160,6 +168,92 @@ public class MediaLogCommands : CommandGroup
         logs.AppendLine("```");
 
         return (Result)await _feedbackService.SendContextualAsync(logs.ToString(), ct: CancellationToken);
+    }
+
+    [Command("me")]
+    [Description("Get an overview of your immersion progress")]
+    [SuppressInteractionResponse(true)]
+    public async Task<IResult> PostImmersionProgressAsync(
+        [Description("Start reporting from a given date")] string since = "")
+    {
+        DateTime sinceDate;
+
+        if (since == "")
+        {
+            sinceDate = new DateTime(year: DateTime.UtcNow.Year, month: DateTime.UtcNow.Month, day: 1);
+        }
+        else
+        {
+            if (!DateTime.TryParse(since, out sinceDate))
+            {
+                return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** The provided date was in an invalid format.", ct: CancellationToken);
+            }
+        }
+
+        IQueryable<ImmersionLog> output = (await _database.GetImmersionLogs(_context.Interaction.Member.Value.User.Value.ID.Value, DateTime.SpecifyKind(sinceDate, DateTimeKind.Utc)));
+
+        List<ImmersionLog> results = output.ToList();
+
+        if (results.Count() == 0) return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** You have no immersion logs to show.", ct: CancellationToken);
+        results.Reverse();
+
+        TimeSpan totalTime = new();
+
+        int vn = 0, manga = 0, anime = 0, book = 0, listening = 0, youtube = 0, anki = 0;
+
+        foreach (ImmersionLog result in results)
+        {
+            totalTime = totalTime.Add(result.Duration);
+
+            switch (result.MediaType)
+            {
+                case MediaType.VisualNovel:
+                    vn += result.Amount;
+                    break;
+                case MediaType.Manga:
+                    manga += result.Amount;
+                    break;
+                case MediaType.Anime:
+                    anime += result.Amount;
+                    break;
+                case MediaType.Book:
+                    book += result.Amount;
+                    break;
+                case MediaType.Listening:
+                    listening += result.Amount;
+                    break;
+                case MediaType.Youtube:
+                    youtube += result.Amount;
+                    break;
+                case MediaType.Anki:
+                    anki += result.Amount;
+                    break;
+            }
+        }
+
+        EmbedBuilder b = new();
+        b.WithTitle($"Immersion Overview since {sinceDate.ToShortDateString()}");
+        b.WithDescription($"**Anime: ** {anime} episodes\n" +
+                         $"**Anki: ** {anki} cards\n" +
+                         $"**Books: ** {book} chars\n" +
+                         $"**Manga: ** {manga} pages\n" +
+                         $"**Listening: ** {listening} minutes\n" +
+                         $"**Visual Novels: ** {vn} chars\n" +
+                         $"**YouTube: ** {youtube} videos\n\n" +
+                         $"**Total Time: {Math.Floor(totalTime.TotalHours)}h {totalTime.Minutes}m**");
+        b.WithColour(_feedbackService.Theme.Success);
+        b.WithImageUrl("attachment://image.png");
+        b.WithFooter(new MediaLogFooter(_context.Interaction.Member.Value.User.Value));
+        var embed = b.Build().Get();
+
+        _context.TryGetChannelID(out var channel);
+
+        await _channelApi.CreateMessageAsync(
+            channel,
+            attachments: new([new FileData("image.png", ImmersionPlotter.PlotImmersionLogs(results))]),
+            embeds: new([embed]));
+
+        return (Result)await _feedbackService.SendContextualAsync("-# Check the [website](https://www.example.com/) for more detail!", ct: CancellationToken, options: new(MessageFlags: MessageFlags.Ephemeral));
     }
 }
 
