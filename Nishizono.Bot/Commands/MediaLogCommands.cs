@@ -104,13 +104,34 @@ public class MediaLogCommands : CommandGroup
             Content = content,
             Comment = comment,
         };
+
         await _database.AddImmersionLog(log);
+
+        // show old and new immersion duration
+        IQueryable<ImmersionLog> output = (await _database.GetImmersionLogs(_context.Interaction.Member.Value.User.Value.ID.Value, DateTime.SpecifyKind(new DateTime(year: DateTime.UtcNow.Year, month: DateTime.UtcNow.Month, day: 1), DateTimeKind.Utc)));
+
+        List<ImmersionLog> results = output.ToList();
+
+        if (results.Count() == 0) return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** You have no immersion logs to show.", ct: CancellationToken);
+        results.Reverse();
+
+        TimeSpan totalTime = new();
+
+        foreach (ImmersionLog logged in results)
+        {
+            totalTime = totalTime.Add(logged.Duration);
+        }
+
+        TimeSpan oldTime = totalTime.Subtract(log.Duration);
+
+        string immersionDurationProgress = $"**{CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(DateTime.Now.Month)}:** " +
+            $"{Math.Floor(oldTime.TotalHours)}h {oldTime.Minutes}m -> {Math.Floor(totalTime.TotalHours)}h {totalTime.Minutes}m";
 
         var embed = new Embed(
             Type: EmbedType.Video,
             Title: MediaLogEmbedInterpolation.Title(mediaType, amount, result.Title),
             Colour: _feedbackService.Theme.Success,
-            Description: (content != "@") ? $"[{result.Title}]({result.Url})" : "",
+            Description: (content != "@") ? $"[{result.Title}]({result.Url})\n{immersionDurationProgress}" : $"{immersionDurationProgress}",
             Thumbnail: (content != "@") ? new EmbedThumbnail(result.Image) : null,
             Footer: new MediaLogFooter(_context.Interaction.Member.Value.User.Value));
 
