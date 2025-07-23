@@ -127,13 +127,34 @@ public class MediaLogCommands : CommandGroup
         string immersionDurationProgress = $"**{CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(DateTime.Now.Month)}:** " +
             $"{Math.Floor(oldTime.TotalHours)}h {oldTime.Minutes}m -> {Math.Floor(totalTime.TotalHours)}h {totalTime.Minutes}m";
 
-        var embed = new Embed(
-            Type: EmbedType.Video,
-            Title: MediaLogEmbedInterpolation.Title(mediaType, amount, result.Title),
-            Colour: _feedbackService.Theme.Success,
-            Description: (content != "@") ? $"[{result.Title}]({result.Url})\n{immersionDurationProgress}" : $"{immersionDurationProgress}",
-            Thumbnail: (content != "@") ? new EmbedThumbnail(result.Image) : null,
-            Footer: new MediaLogFooter(_context.Interaction.Member.Value.User.Value));
+        int streak = 1;
+
+        results.Reverse();
+
+        DateTime lastDate = DateTime.UtcNow.Date;
+
+        foreach (ImmersionLog logged in results)
+        {
+            if (logged.TimeStamp.Date == lastDate) continue;
+
+            if (lastDate.Subtract(TimeSpan.FromDays(1)) == logged.TimeStamp.Date)
+            {
+                streak++;
+            }
+
+            lastDate = logged.TimeStamp.Date;
+        }
+
+        streak--;
+
+        EmbedBuilder b = new();
+        b.WithTitle(MediaLogEmbedInterpolation.Title(mediaType, amount, result.Title));
+        b.WithDescription((content != "@") ? $"[{result.Title}]({result.Url})\n{immersionDurationProgress}" : $"{immersionDurationProgress}");
+        b.WithColour(_feedbackService.Theme.Success);
+        b.WithThumbnailUrl((content != "@") ? result.Image : "");
+        b.AddField(new EmbedField("Streak", $"{streak} days"));
+        b.WithFooter(new MediaLogFooter(_context.Interaction.Member.Value.User.Value));
+        var embed = b.Build().Get();
 
         if (mediaType == MediaType.Youtube)
         {
