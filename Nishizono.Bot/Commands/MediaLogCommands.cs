@@ -129,8 +129,6 @@ public class MediaLogCommands : CommandGroup
 
         int streak = 1;
 
-        results.Reverse();
-
         DateTime lastDate = DateTime.UtcNow.Date;
 
         foreach (ImmersionLog logged in results)
@@ -141,7 +139,11 @@ public class MediaLogCommands : CommandGroup
             {
                 streak++;
             }
-
+            else
+            {
+                break;
+            }
+            
             lastDate = logged.TimeStamp.Date;
         }
 
