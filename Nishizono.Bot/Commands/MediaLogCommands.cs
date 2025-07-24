@@ -147,13 +147,11 @@ public class MediaLogCommands : CommandGroup
             lastDate = logged.TimeStamp.Date;
         }
 
-        streak--;
-
         EmbedBuilder b = new();
         b.WithTitle(MediaLogEmbedInterpolation.Title(mediaType, amount, result.Title));
         b.WithDescription((content != "@") ? $"[{result.Title}]({result.Url})\n{immersionDurationProgress}" : $"{immersionDurationProgress}");
         b.WithColour(_feedbackService.Theme.Success);
-        if (content != "@")
+        if (result.Image != "")
         {
             b.WithThumbnailUrl(result.Image);
         }
