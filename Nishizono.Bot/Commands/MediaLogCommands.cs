@@ -153,7 +153,10 @@ public class MediaLogCommands : CommandGroup
         b.WithTitle(MediaLogEmbedInterpolation.Title(mediaType, amount, result.Title));
         b.WithDescription((content != "@") ? $"[{result.Title}]({result.Url})\n{immersionDurationProgress}" : $"{immersionDurationProgress}");
         b.WithColour(_feedbackService.Theme.Success);
-        b.WithThumbnailUrl((content != "@") ? result.Image : "");
+        if (content != "@")
+        {
+            b.WithThumbnailUrl(result.Image);
+        }
         b.AddField(new EmbedField("Streak", $"{streak} days"));
         b.WithFooter(new MediaLogFooter(_context.Interaction.Member.Value.User.Value));
         var embed = b.Build().Get();
