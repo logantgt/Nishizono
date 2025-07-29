@@ -295,7 +295,7 @@ public class MediaLogCommands : CommandGroup
 
         await _channelApi.CreateMessageAsync(
             channel,
-            attachments: new([new FileData("image.png", ImmersionPlotter.PlotImmersionLogs(results))]),
+            attachments: new([new FileData("image.png", ImmersionPlotter.PlotImmersionLogs(results, sinceDate, DateTime.UtcNow))]),
             embeds: new([embed]));
 
         return (Result)await _feedbackService.SendContextualAsync("-# Check the [website](https://www.example.com/) for more detail!", ct: CancellationToken, options: new(MessageFlags: MessageFlags.Ephemeral));
