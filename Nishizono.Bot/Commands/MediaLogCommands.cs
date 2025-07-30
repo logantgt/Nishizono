@@ -337,7 +337,16 @@ public class MediaLogFooter : IEmbedFooter
 
     public MediaLogFooter(IUser user)
     {
-        _iconUrl = CDN.GetUserAvatarUrl(user).Entity.ToString();
+        Uri? iconUrl = CDN.GetUserAvatarUrl(user).Entity;
+        if (iconUrl != null)
+        {
+            _iconUrl = iconUrl.ToString();
+        }
+        else
+        {
+            _iconUrl = $"https://cdn.discordapp.com/embed/avatars/{(user.ID.Value << 22) % 6}.png";
+        }
+        
         _text = $"From {user.Username} on {DateTime.UtcNow.Date.ToShortDateString()}";
     }
 
