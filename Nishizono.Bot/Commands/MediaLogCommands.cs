@@ -262,7 +262,7 @@ public class MediaLogCommands : CommandGroup
 
         foreach (ImmersionLog result in results)
         {
-            if (result.TimeStamp > untilDate) continue;
+            if (result.TimeStamp < untilDate) continue;
 
             totalTime = totalTime.Add(result.Duration);
 
