@@ -45,6 +45,8 @@ public static class ImmersionPlotter
 
             foreach (ImmersionLog log in logs.Where(_ => _.TimeStamp.Date == since.Date.AddDays(x)))
             {
+                if (log.TimeStamp > until) continue;
+
                 switch (log.MediaType)
                 {
                     case MediaType.VisualNovel:
