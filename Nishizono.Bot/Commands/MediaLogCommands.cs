@@ -219,9 +219,11 @@ public class MediaLogCommands : CommandGroup
     [Description("Get an overview of your immersion progress")]
     [SuppressInteractionResponse(true)]
     public async Task<IResult> PostImmersionProgressAsync(
-        [Description("Start reporting from a given date")] string since = "")
+        [Description("Start reporting from a given date (default: start of month)")] string since = "",
+        [Description("End the report at a given date (default: today)")] string until = "")
     {
         DateTime sinceDate;
+        DateTime untilDate;
 
         if (since == "")
         {
@@ -231,7 +233,19 @@ public class MediaLogCommands : CommandGroup
         {
             if (!DateTime.TryParse(since, out sinceDate))
             {
-                return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** The provided date was in an invalid format.", ct: CancellationToken);
+                return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** The provided start date was in an invalid format.", ct: CancellationToken);
+            }
+        }
+
+        if (until == "")
+        {
+            untilDate = DateTime.UtcNow;
+        }
+        else
+        {
+            if (!DateTime.TryParse(since, out untilDate))
+            {
+                return (Result)await _feedbackService.SendContextualAsync($":no_entry_sign: **Error:** The provided end date was in an invalid format.", ct: CancellationToken);
             }
         }
 
@@ -248,6 +262,8 @@ public class MediaLogCommands : CommandGroup
 
         foreach (ImmersionLog result in results)
         {
+            if (result.TimeStamp > untilDate) continue;
+
             totalTime = totalTime.Add(result.Duration);
 
             switch (result.MediaType)
@@ -295,7 +311,7 @@ public class MediaLogCommands : CommandGroup
 
         await _channelApi.CreateMessageAsync(
             channel,
-            attachments: new([new FileData("image.png", ImmersionPlotter.PlotImmersionLogs(results, sinceDate, DateTime.UtcNow))]),
+            attachments: new([new FileData("image.png", ImmersionPlotter.PlotImmersionLogs(results, sinceDate, untilDate))]),
             embeds: new([embed]));
 
         return (Result)await _feedbackService.SendContextualAsync("-# Check the [website](https://www.example.com/) for more detail!", ct: CancellationToken, options: new(MessageFlags: MessageFlags.Ephemeral));
