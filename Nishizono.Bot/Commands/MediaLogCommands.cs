@@ -212,6 +212,8 @@ public class MediaLogCommands : CommandGroup
         }
         logs.AppendLine("```");
 
+        File.WriteAllText("logs.txt", logs.ToString());
+
         return (Result)await _feedbackService.SendContextualAsync(logs.ToString(), ct: CancellationToken);
     }
 
