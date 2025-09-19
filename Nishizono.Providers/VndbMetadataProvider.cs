@@ -19,7 +19,7 @@ public class VndbMetadataProvider : CacheableProvider, IMetadataProvider
 
     public string Url => "https://vndb.org";
 
-    public async Task<List<ProviderMetadata>> QueryAsync(MetadataType metadataType, QueryType queryType, string query, bool cache = true)
+    public async Task<List<ProviderMetadata>> QueryAsync(MetadataType metadataType, QueryType queryType, string query, bool cache = false)
     {
         List<ProviderMetadata> metadata = new();
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2) return metadata;
@@ -43,8 +43,6 @@ public class VndbMetadataProvider : CacheableProvider, IMetadataProvider
         foreach (VndbVnResult result in response.Results)
         {
             if (result.Title is null || result.Id is null || result.Image is null || result.Image.Url is null) continue;
-
-            if (result.Id == "v27271") continue;
 
             if (result.AltTitle is null) result.AltTitle = "";
 
