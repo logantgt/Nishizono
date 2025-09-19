@@ -44,6 +44,8 @@ public class VndbMetadataProvider : CacheableProvider, IMetadataProvider
         {
             if (result.Title is null || result.Id is null || result.Image is null || result.Image.Url is null) continue;
 
+            if (result.Id == "v27271") continue;
+
             if (result.AltTitle is null) result.AltTitle = "";
 
             metadata.Add(new ProviderMetadata

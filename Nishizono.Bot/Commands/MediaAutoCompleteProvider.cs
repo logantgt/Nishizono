@@ -55,8 +55,8 @@ namespace Nishizono.Bot.Commands
             }
 
             return results
-                  .OrderByDescending(n => Fuzz.Ratio(userInput, $"{n.Title} | {n.NativeTitle}"))
-                  .Select(n => new ApplicationCommandOptionChoice($"{n.Title} | {n.NativeTitle}", n.ProviderId))
+                  .OrderByDescending(n => Fuzz.Ratio(userInput, $"{n.Title} {n.NativeTitle}"))
+                  .Select(n => new ApplicationCommandOptionChoice($"{n.Title} {n.NativeTitle}", n.ProviderId))
                   .ToList();
         }
     }
